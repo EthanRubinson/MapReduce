@@ -1,13 +1,14 @@
 open Async.Std
 
-type 'a t
+type 'a t = 'a Async.Std.Pipe.Reader.t * 'a Async.Std.Pipe.Writer.t
 
 let create () =
-  failwith "I'm tiwed.  Tiwed of playing the game"
+  Async.Std.Pipe.create ()
 
-let push q x =
-  failwith "Ain't it a cryin shame?"
+let push (q: 'a t) (x : 'a) : unit =
+  don't_wait_for(Async.Std.Pipe.write (snd q) x)
 
 let pop  q =
-  failwith "I'm so tiwed."
-
+  Async.Std.Pipe.read (fst q) >>= function
+	| `Ok msg -> return msg
+  	| `Eof -> failwith	"Something went wrong in pop"
