@@ -1,8 +1,9 @@
 open Async.Std
 
-let fork d f1 f2 =
-  failwith "My mind is aglow with whirling, transient nodes of thought..."
-
+let fork d f1 f2 = 
+	match Deferred.peek d with
+	|Some(x) -> ignore( Deferred.both (f1 x) (f2 x) )
+	|None -> ()
 
 let deferred_map l f =
   let rec map_loop = function
