@@ -15,7 +15,7 @@ module Make (Job : MapReduce.Job) = struct
       | [] -> return []
       | h::t -> (Tcp.connect (Tcp.to_host_and_port (fst h) (snd h) )) >>= fun connection ->
           let (_,_,writer) = connection in
-          (Writer.write writer Job.name);
+          (Writer.write_line writer Job.name);
           connect_and_initialize_workers t >>= fun conn_list_tl ->
           return (connection :: conn_list_tl)
     in
