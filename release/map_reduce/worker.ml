@@ -3,8 +3,16 @@ open Async.Std
 module Make (Job : MapReduce.Job) = struct
 
   (* see .mli *)
-  let run r w =
-    failwith "Nowhere special?  I always wanted to go there."
+   let rec run r w =
+     let module WorkerReq = WorkerRequest(Job) in
+     let module WorkerRes = WorkerResponse(Job) in
+     WorkerReq.receive r>>= fun req ->
+     match req with
+     |`Eof -> return ()
+     |`Ok(WorkerReq.MapRequest(i)) -> 
+                (Job.map i >>= fun res -> (WorkerRes.send w (WorkerRes.MapResult(res))); run r w)
+     |`Ok(WorkerReq.ReduceRequest(k,lst)) -> 
+                (Job.reduce (k,lst) >>= fun res -> (WorkerRes.send w (WorkerRes.ReduceResult(res))); run r w)
 
 end
 
