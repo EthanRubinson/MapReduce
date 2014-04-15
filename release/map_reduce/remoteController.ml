@@ -11,6 +11,7 @@ module Make (Job : MapReduce.Job) = struct
   let map_reduce inputs =
 
     let worker_list = !ips in
+    (*CHANGE THIS to execute in parallel and handle connection failures!*)
     let rec connect_and_initialize_workers = function
       | [] -> return []
       | h::t -> (Tcp.connect (Tcp.to_host_and_port (fst h) (snd h) )) >>= fun connection ->
@@ -37,6 +38,8 @@ module Make (Job : MapReduce.Job) = struct
       in 
       let started_jobs = initial_mapping inputs conn_list in
       
+    (*All of the jobs have been started, wait for them all to complete and restart any that fail*)
+
       let rec wait_for_completion running_jobs alive_workers = match running_jobs with
         | [] -> return []
         | h::t -> (let (job,conn,result) = h in
@@ -55,7 +58,11 @@ module Make (Job : MapReduce.Job) = struct
                       | WRes.ReduceResult(_) -> failwith "[Error]: Got 'ReduceResult' from worker; Expected 'MapResult'"
                  ))
       in 
-      ignore(wait_for_completion started_jobs conn_list);
+      let module C = Combiner.Make(Job) in
+      (wait_for_completion started_jobs conn_list)
+         >>| List.flatten
+         >>| C.combine
+         >>= fun _ -> ();
 
       failwith "Not Implemented"
 
