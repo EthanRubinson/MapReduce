@@ -3,16 +3,25 @@ open Async.Std
 module Make (Job : MapReduce.Job) = struct
 
   (* see .mli *)
-   let rec run r w =
+      let rec run r w =
      let module WorkerReq = WorkerRequest(Job) in
      let module WorkerRes = WorkerResponse(Job) in
      WorkerReq.receive r>>= fun req ->
      match req with
-     |`Eof -> return ()
+     |`Eof -> (try_with (fun () -> return (WorkerRes.send w (WorkerRes.JobFailed("`Eof in worker - receive")))) >>= 
+     			fun res -> match res with
+     			|Core.Std.Result.Error e -> failwith "writer failed in sending job_failed"
+     			|Core.Std.Result.Ok v -> run r w)
      |`Ok(WorkerReq.MapRequest(i)) -> 
-                (Job.map i >>= fun res -> (WorkerRes.send w (WorkerRes.MapResult(res))); run r w)
+                (Job.map i >>= fun res -> try_with (fun () -> return (WorkerRes.send w (WorkerRes.MapResult(res)))) >>=
+                 fun res1 -> match res1 with
+     			|Core.Std.Result.Error e -> failwith "writer failed in sending MapResult"
+     			|Core.Std.Result.Ok v -> run r w)
      |`Ok(WorkerReq.ReduceRequest(k,lst)) -> 
-                (Job.reduce (k,lst) >>= fun res -> (WorkerRes.send w (WorkerRes.ReduceResult(res))); run r w)
+                (Job.reduce (k,lst) >>= fun res -> try_with (fun () -> return (WorkerRes.send w (WorkerRes.ReduceResult(res)))) >>=
+                 fun res1 -> match res1 with
+     			|Core.Std.Result.Error e -> failwith "writer failed in sending ReduceResult"
+     			|Core.Std.Result.Ok v -> run r w)
 
 end
 
