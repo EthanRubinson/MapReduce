@@ -8,10 +8,11 @@ type filename = string
 (******************************************************************************)
 
 module Job = struct
-  type input
-  type key
-  type inter
-  type output
+  type filename = string
+  type input = (filename * string) 
+  type key = string
+  type inter = filename
+  type output = inter list
 
   let name = "index.job"
 
@@ -61,7 +62,12 @@ module App  = struct
     (** The input should be a single file name.  The named file should contain
         a list of files to index. *)
     let main args =
-      failwith "Can you hear me, Major Zardoz? Can you hear me, Major Zardoz? Can you hear me, Major Zardoz?"
+      if args = [] then failwith "No files provided."
+      else
+        (read (List.hd args))
+          >>= fun inputs -> MR.map_reduce inputs
+          >>| 
+          output
   end
 end
 
