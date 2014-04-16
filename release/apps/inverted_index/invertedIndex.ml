@@ -17,10 +17,23 @@ module Job = struct
   let name = "index.job"
 
   let map input : (key * inter) list Deferred.t =
-    failwith "I'm stepping through the door / And I'm floating in a most peculiar way / And the stars look very different today"
+let words (str:string):key list  = AppUtils.split_words str in
+
+    let rec outputmaker (accumLst:(key*inter) list) (words:key list) (seenLst:key list): (key*inter) list= 
+    match words with
+    |[] ->  accumLst
+    |hd::tl -> (if (List.mem hd seenLst) then 
+      (outputmaker accumLst tl seenLst) else 
+      (outputmaker ((hd,(fst input))::accumLst) 
+        tl (hd::seenLst))) in
+    return (outputmaker [] (words (snd input)) [])
 
   let reduce (key, inters) : output Deferred.t =
-    failwith "Here am I floating round my tin can / Far above the Moon / Planet Earth is blue / And there's nothing I can do."
+    let rec intercomp interslst accumList = 
+    match interslst with
+    |[] -> accumList
+    |hd::tl -> if (List.mem hd accumList) then intercomp tl accumList else intercomp tl (hd::accumList) in
+    return (intercomp inters [])
 end
 
 (* register the job *)
