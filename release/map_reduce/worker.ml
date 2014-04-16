@@ -9,25 +9,17 @@ module Make (Job : MapReduce.Job) = struct
      WorkerReq.receive r
      >>= fun req ->
       match req with
-        | `Eof -> (try_with (fun () -> return (WorkerRes.send w (WorkerRes.JobFailed("`Eof in worker - receive"))))
-                  >>= fun res -> 
-                    match res with
-     			            |Core.Std.Result.Error e -> failwith "writer failed in sending job_failed"
-     			            |Core.Std.Result.Ok v -> run r w)
+        | `Eof ->  (Reader.close r)
         | `Ok (WorkerReq.MapRequest(i)) -> 
-          (Job.map i >>= fun res -> 
-            try_with (fun () -> return (WorkerRes.send w (WorkerRes.MapResult(res))))
-            >>= fun res1 -> 
-              match res1 with
-     			      |Core.Std.Result.Error e -> failwith "writer failed in sending MapResult"
-     			      |Core.Std.Result.Ok v -> run r w)
+            (try_with (fun () -> Job.map i) >>= fun res ->
+              match res with
+     			      |Core.Std.Result.Error e -> (WorkerRes.send w (WorkerRes.JobFailed("Make.run- map"))); run r w
+     			      |Core.Std.Result.Ok v ->  (WorkerRes.send w (WorkerRes.MapResult(v))); run r w)
         | `Ok (WorkerReq.ReduceRequest(k,lst)) -> 
-                (Job.reduce (k,lst) >>= fun res -> 
-                  try_with (fun () -> return (WorkerRes.send w (WorkerRes.ReduceResult(res))))
-                  >>= fun res1 -> 
-                    match res1 with
-     			            |Core.Std.Result.Error e -> failwith "writer failed in sending ReduceResult"
-     			            |Core.Std.Result.Ok v -> run r w)
+            (try_with(fun () -> Job.reduce (k,lst)) >>= fun res ->
+              match res with
+                |Core.Std.Result.Error e -> (WorkerRes.send w (WorkerRes.JobFailed("Make.run- reduce"))); run r w
+                |Core.Std.Result.Ok v ->  (WorkerRes.send w (WorkerRes.ReduceResult(v))); run r w)
 
 end
 
