@@ -1,100 +1,101 @@
 open Async.Std
 open Protocol
+open AQueue
+open Warmup
 
 let ips = ref []
 
 let init addrs =
   ips := addrs
 
-
 module Make (Job : MapReduce.Job) = struct
   let map_reduce inputs =
 
+    let print_worker = fun ip port -> ip ^ ":" ^ string_of_int port in
+
     let worker_list = !ips in
-    (*CHANGE THIS to execute in parallel and handle connection failures!*)
-    let rec connect_and_initialize_workers = function
-      | [] -> return []
-      | h::t -> (Tcp.connect (Tcp.to_host_and_port (fst h) (snd h) )) >>= fun connection ->
-          let (_,_,writer) = connection in
-          (Writer.write_line writer Job.name);
-          connect_and_initialize_workers t >>= fun conn_list_tl ->
-          return (connection :: conn_list_tl)
+    let alive_queue = create () in
+    let num_alive_workers = ref 0 in
+    let connect_and_initialize_workers = fun (ip,port) ->
+      (print_endline ("Attempting to connect to worker at " ^ print_worker ip port));
+      try_with ( fun () -> (Tcp.connect (Tcp.to_host_and_port ip port)) )
+      >>= function
+        | Core.Std.Result.Error e -> (print_endline ("[ERROR] Failed to connect to worker at " ^ print_worker ip port));
+                       return ()
+        | Core.Std.Result.Ok  v -> ((print_endline ("[INFO] Connected to worker at " ^ print_worker ip port));
+                       let (_,_,w) = v in 
+                         try_with (fun () -> return (Writer.write_line w Job.name))
+                         >>= function
+                             | Core.Std.Result.Error e -> (print_endline ("[ERROR] Failed to initialize worker at " ^ print_worker ip port));
+                                            return ()
+                             | Core.Std.Result.Ok    v' -> (print_endline ("[INFO] Initialized worker at " ^ print_worker ip port));
+                                             (num_alive_workers := !num_alive_workers + 1);
+                                             return (push alive_queue v) )
     in
-    connect_and_initialize_workers worker_list >>= fun conn_list ->
-
-    (*At this point we should have a list of connections to workers and they all have been sent
-       the name of the job they are to be executing *)
-
+    deferred_map worker_list connect_and_initialize_workers 
+    >>= fun _ -> 
       let module WReq = WorkerRequest(Job) in
       let module WRes = WorkerResponse(Job) in
 
-      let rec initial_mapping input_list worker_list = match input_list with
-        | [] -> []
-        | h::t -> (match worker_list with
-              | [] -> failwith "[Error] No workers for map!"
-              | h'::t' -> (let (_,r,w) = h' in
-                     (WReq.send w (WReq.MapRequest h) );
-                     (h, h', (WRes.receive r)) :: (initial_mapping t (t' @ [h']))))
-      in 
-      let started_jobs = initial_mapping inputs conn_list in
-      
-    (*All of the jobs have been started, wait for them all to complete and restart any that fail*)
+      let rec mapperFunc inputElement = pop alive_queue 
+      >>= fun worker -> 
+        match worker with
+          | (s,r,w) -> (WReq.send w (WReq.MapRequest inputElement));
+                 WRes.receive r
+                 >>= fun res -> match res with
+                  |`Eof -> (print_endline "[ERROR] A worker returned `Eof; Closing socket and reassigning work");
+                       (Socket.shutdown s `Both);
+                       (num_alive_workers := !num_alive_workers - 1);
+                       if (!num_alive_workers <= 0) then
+                        failwith "[FATAL] InfrastructureFailure; All workers are dead"
+                       else
+                        mapperFunc inputElement
 
-      let rec wait_for_completion running_jobs alive_workers = match running_jobs with
-        | [] -> return ([],alive_workers)
-        | h::t -> (let (job,conn,result) = h in
-              result >>= fun res ->
-                match res with
-                 | `Eof -> ((print_endline "[Warning] Socket closed, map-worker presumed to be down; Restarting job");
-                      let new_alive_workers = List.filter (fun p -> (p != conn)) alive_workers in
-                      match new_alive_workers with
-                        | [] -> failwith "[Error] All map-workers have died! Can't map"
-                        | h'::t' -> (let (_,r,_) = h' in (wait_for_completion (t @ [(job,h',(WRes.receive r))]) (t' @ [h']))) 
-                      )
-                 | `Ok map_result -> (
-                  match map_result with 
-                    | WRes.JobFailed(s) -> failwith ("[Error]: Got 'JobFailed' from map-worker with message: " ^ s)
-                      | WRes.MapResult(m) -> (wait_for_completion t alive_workers) >>= fun data -> return ((m :: fst(data)) ,snd(data))
-                      | WRes.ReduceResult(_) -> failwith "[Error]: Got 'ReduceResult' from worker; Expected 'MapResult'"
-                 ))
-      in 
-      let module C = Combiner.Make(Job) in
-      (wait_for_completion started_jobs conn_list) >>= fun map_completion_result -> 
-        let alive_workers = snd(map_completion_result) in
-        let intermediate_data = C.combine( List.flatten ( fst(map_completion_result) )) in
-         
-        (*Begin reduce logic*)
-        let rec initial_reducing input_list worker_list = match input_list with
-        | [] -> []
-        | h::t -> (match worker_list with
-              | [] -> failwith "[Error] No workers for reduce!"
-              | h'::t' -> (let (_,r,w) = h' in
-                     (WReq.send w (WReq.ReduceRequest( fst h, snd h ) ) );
-                     (h, h', (WRes.receive r)) :: (initial_reducing t (t' @ [h']))))
-      in 
-      let started_jobs = initial_reducing intermediate_data alive_workers in
-      
-    (*All of the jobs have been started, wait for them all to complete and restart any that fail*)
+                  |`Ok msg -> match msg with 
+                    | WRes.JobFailed(err_msg) -> failwith ("[FATAL] MapFailed; " ^ err_msg)
+                      | WRes.MapResult(map_res) -> (print_endline "[INFO] A worker returned `Ok; Recording result and queuing worker");
+                                       (push alive_queue worker);
+                                       return map_res
+                      | _ -> (print_endline "[ERROR] A worker returned an innapropriate response, closing socket and reassigning work");
+                       (Socket.shutdown s `Both);
+                       (num_alive_workers := !num_alive_workers - 1);
+                       if (!num_alive_workers <= 0) then
+                        failwith "[FATAL] InfrastructureFailure; All workers are dead"
+                       else
+                        mapperFunc inputElement
+      in
+      deferred_map inputs mapperFunc 
+      >>= fun map_lst -> 
+        let module C = Combiner.Make(Job) in
+        let intermediate_data = C.combine( List.flatten map_lst ) in
 
-      let rec wait_for_completion running_jobs alive_workers = match running_jobs with
-        | [] -> return []
-        | h::t -> (let (job,conn,result) = h in
-              result >>= fun res ->
-                match res with
-                 | `Eof -> ((print_endline "[Warning] Socket closed, reduce-worker presumed to be down; Restarting job");
-                      let new_alive_workers = List.filter (fun p -> (p != conn)) alive_workers in
-                      match new_alive_workers with
-                        | [] -> failwith "[Error] All reduce-workers have died!"
-                        | h'::t' -> (let (_,r,_) = h' in (wait_for_completion (t @ [(job,h',(WRes.receive r))]) (t' @ [h']))) 
-                      )
-                 | `Ok red_result -> (
-                  match red_result with 
-                    | WRes.JobFailed(s) -> failwith ("[Error]: Got 'JobFailed' from worker with message: " ^ s)
-                      | WRes.MapResult(_) -> failwith "[Error]: Got 'MapResult' from worker; Expected 'ReduceResult'"
-                      | WRes.ReduceResult(r) -> (wait_for_completion t alive_workers) >>= fun data -> return ((fst(job),r) :: data)
-                 ))
-      in 
-      wait_for_completion started_jobs alive_workers
-  
+        let rec reducerFunc inputElement = pop alive_queue
+        >>= fun worker ->
+          match worker with
+            |(s,r,w) -> (WReq.send w (WReq.ReduceRequest (fst inputElement, snd inputElement)));
+                  WRes.receive r
+                  >>= fun res -> match res with
+                     |`Eof -> (print_endline "[ERROR] A worker returned `Eof; Closing socket and reassigning work");
+                          (Socket.shutdown s `Both);
+                          (num_alive_workers := !num_alive_workers - 1);
+                          if (!num_alive_workers <= 0) then
+                          failwith "[FATAL] InfrastructureFailure; All workers are dead"
+                        else
+                          reducerFunc inputElement
+                     |`Ok msg -> match msg with 
+                        | WRes.JobFailed(err_msg) -> failwith ("[FATAL] ReduceFailed; " ^ err_msg)
+                          | WRes.ReduceResult(red_res) -> (print_endline "[INFO] A worker returned `Ok; Recording result and queuing worker");
+                                       (push alive_queue worker);
+                                       return (fst(inputElement), red_res)
+                          | _ -> (print_endline "[ERROR] A worker returned an innapropriate response, closing socket and reassigning work");
+                           (Socket.shutdown s `Both);
+                           (num_alive_workers := !num_alive_workers - 1);
+                           if (!num_alive_workers <= 0) then
+                            failwith "[FATAL] InfrastructureFailure; All workers are dead"
+                           else
+                            reducerFunc inputElement
+        in
+      deferred_map intermediate_data reducerFunc
+      >>= fun red_lst -> return red_lst
 end
 
