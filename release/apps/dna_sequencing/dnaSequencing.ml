@@ -59,18 +59,34 @@ let print_results results : unit =
 (******************************************************************************)
 
 module Job1 = struct
-  type input
-  type key
-  type inter
-  type output
+  type input = sequence
+  type key = string
+  type inter = id * dna_type * int
+  type output = (inter * inter) list
 
   let name = "dna.job1"
 
   let map input : (key * inter) list Deferred.t =
-    failwith "Heavy decibels are playing on my guitar / We got deferred dot ts coming up through the code"
+    match input with
+      | {id = i; kind = l; data = d} -> (
+                                        if String.length d < 10 then 
+                                          failwith "[ERROR] Reads/Refs must have length >= 10"
+                                        else
+                                          let rec gen_10mer str start_index remaining = 
+                                            if remaining <= -1 then
+                                              []
+                                            else
+                                              ((String.sub str start_index 10), (i,l,start_index)) :: (gen_10mer str (start_index + 1) (remaining - 1))
+                                          in
+                                          return (gen_10mer d 0 ((String.length d) - 10))
+                                        )
 
   let reduce (key, inters) : output Deferred.t =
-    failwith "We're just listening to the rock that's giving too much noise / Are you deaf you wanna hear some more?"
+    let cartesian l l' = List.concat (List.map (fun e -> List.map (fun e' -> (e,e')) l') l) in
+    let ref_lst = List.filter (fun elem -> let (_,k,_) = elem in if k == Ref then true else false) inters in
+    let read_lst = List.filter (fun elem -> let (_,k,_) = elem in if k == Read then true else false) inters in
+    return (cartesian ref_lst read_lst)
+
 end
 
 let () = MapReduce.register_job (module Job1)
