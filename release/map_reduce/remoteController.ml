@@ -34,6 +34,11 @@ module Make (Job : MapReduce.Job) = struct
     in
     deferred_map worker_list connect_and_initialize_workers 
     >>= fun _ -> 
+    
+      if !num_alive_workers == 0 then
+        failwith "[FATAL] InfrastructureFailure; Could not connect to any workers"
+      else
+
       let module WReq = WorkerRequest(Job) in
       let module WRes = WorkerResponse(Job) in
 
@@ -98,4 +103,3 @@ module Make (Job : MapReduce.Job) = struct
       deferred_map intermediate_data reducerFunc
       >>= fun red_lst -> return red_lst
 end
-
