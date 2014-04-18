@@ -17,7 +17,7 @@ module Make (Job : MapReduce.Job) = struct
     let alive_queue = create () in
     let num_alive_workers = ref 0 in
     let connect_and_initialize_workers = fun (ip,port) ->
-      (print_endline ("Attempting to connect to worker at " ^ print_worker ip port));
+      (print_endline ("[INFO] Attempting to connect to worker at " ^ print_worker ip port));
       try_with ( fun () -> (Tcp.connect (Tcp.to_host_and_port ip port)) )
       >>= function
         | Core.Std.Result.Error e -> (print_endline ("[ERROR] Failed to connect to worker at " ^ print_worker ip port));
@@ -58,7 +58,7 @@ module Make (Job : MapReduce.Job) = struct
 
                   |`Ok msg -> match msg with 
                     | WRes.JobFailed(err_msg) -> failwith ("[FATAL] MapFailed; " ^ err_msg)
-                      | WRes.MapResult(map_res) -> (print_endline "[INFO] A worker returned `Ok; Recording result and queuing worker");
+                      | WRes.MapResult(map_res) ->
                                        (push alive_queue worker);
                                        return map_res
                       | _ -> (print_endline "[ERROR] A worker returned an innapropriate response, closing socket and reassigning work");
@@ -89,7 +89,7 @@ module Make (Job : MapReduce.Job) = struct
                           reducerFunc inputElement
                      |`Ok msg -> match msg with 
                         | WRes.JobFailed(err_msg) -> failwith ("[FATAL] ReduceFailed; " ^ err_msg)
-                          | WRes.ReduceResult(red_res) -> (print_endline "[INFO] A worker returned `Ok; Recording result and queuing worker");
+                          | WRes.ReduceResult(red_res) ->
                                        (push alive_queue worker);
                                        return (fst(inputElement), red_res)
                           | _ -> (print_endline "[ERROR] A worker returned an innapropriate response, closing socket and reassigning work");

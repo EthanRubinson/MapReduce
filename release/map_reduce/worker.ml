@@ -10,11 +10,11 @@ module Make (Job : MapReduce.Job) = struct
      >>= fun req ->
       match req with
         | `Eof ->  (Reader.close r)
-        | `Ok (WorkerReq.MapRequest(i)) -> 
+        | `Ok (WorkerReq.MapRequest(i)) ->
             (try_with (fun () -> Job.map i) >>= fun res ->
               match res with
-     			      |Core.Std.Result.Error e -> (WorkerRes.send w (WorkerRes.JobFailed("Make.run- map"))); run r w
-     			      |Core.Std.Result.Ok v ->  (WorkerRes.send w (WorkerRes.MapResult(v))); run r w)
+                |Core.Std.Result.Error e -> (WorkerRes.send w (WorkerRes.JobFailed("Make.run- map"))); run r w
+                |Core.Std.Result.Ok v ->  (WorkerRes.send w (WorkerRes.MapResult(v))); run r w)
         | `Ok (WorkerReq.ReduceRequest(k,lst)) -> 
             (try_with(fun () -> Job.reduce (k,lst)) >>= fun res ->
               match res with
