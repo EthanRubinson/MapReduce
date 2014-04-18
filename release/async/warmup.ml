@@ -1,9 +1,7 @@
 open Async.Std
 
-let fork d f1 f2 = 
-	match Deferred.peek d with
-	|Some(x) -> ignore( Deferred.both (f1 x) (f2 x) )
-	|None -> ()
+let fork d f1 f2 = ignore( d >>= fun v -> (f1 v); (f2 v); return ())
+
 
 let deferred_map l f =
   let rec map_loop = function
