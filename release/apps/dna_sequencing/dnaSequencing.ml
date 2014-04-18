@@ -25,6 +25,8 @@ type result = {
   ref_off  : int;
 }
 
+type infos = id * dna_type * int
+
 (******************************************************************************)
 (** file reading and writing                                                  *)
 (******************************************************************************)
@@ -61,7 +63,7 @@ let print_results results : unit =
 module Job1 = struct
   type input = sequence
   type key = string
-  type inter = id * dna_type * int
+  type inter = infos
   type output = (inter * inter) list
 
   let name = "dna.job1"
@@ -94,18 +96,46 @@ let () = MapReduce.register_job (module Job1)
 
 
 module Job2 = struct
-  type input
-  type key
-  type inter
-  type output
+  type input = (infos * infos) list
+  type key = (int * int)
+  type inter = (int * int)
+  type output = result list
 
   let name = "dna.job2"
 
   let map input : (key * inter) list Deferred.t =
-    failwith "Well, I asked you if you wanted any memory and refs / You said you wanted functional data types instead"
+    let map_fun = fun elem ->
+      let (i,_,o) = fst(elem) in
+      let (i',_,o') = snd(elem) in
+        ((i, i'), (o, o'))
+    in
+    return (List.map map_fun input)
 
   let reduce (key, inters) : output Deferred.t =
-    failwith "We're just talking about the future / Forget about the past / I'll always stay functional / It's never gonna segfault, never gonna segfault"
+    let ref_id = fst(key) in
+    let read_id = snd(key) in
+
+    let rec gen_result base_lst acc = match base_lst with
+      | [] -> acc
+      | h::t -> (
+                let ref_off = fst(h) in
+                let read_off = snd(h) in
+                let rec build_res sub_lst next_ref_off next_read_off acc' = match sub_lst with
+                  | [] -> acc'
+                  | h'::t' -> (if (fst h') == next_ref_off && (snd h') == next_read_off then build_res t' (next_ref_off + 1) (next_read_off + 1) (acc' @ [h']) 
+                             else build_res t' next_ref_off next_read_off acc' 
+                            )
+                in
+                let resulting_list = build_res t (ref_off+1) (read_off+1) [h] in
+                let compute_result ll = {length = 9 + List.length ll; read = read_id; read_off = read_off; ref = ref_id; ref_off = ref_off} in
+                gen_result (List.filter (fun elem -> if List.mem elem resulting_list then false else true) t) (acc @ [compute_result resulting_list])
+
+              )
+    in
+    return (gen_result (List.sort compare inters) [])
+
+
+
 end
 
 let () = MapReduce.register_job (module Job2)
@@ -121,7 +151,8 @@ module App  = struct
     module MR2 = Controller(Job2)
 
     let run (input : sequence list) : result list Deferred.t =
-      failwith "Rock 'n roll ain't noise pollution / Rock 'n' roll ain't gonna die / Rock 'n' roll ain't noise pollution / Rock 'n' roll it will survive"
+      MR1.map_reduce input >>= fun x -> MR2.map_reduce (List.map (fun e -> snd e) x) >>= fun y -> return (List.flatten (List.map (fun e -> snd e) y))
+
 
     let main args =
       read_files args
