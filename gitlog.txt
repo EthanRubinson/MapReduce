@@ -1,0 +1,181 @@
+commit 99354fedc6f2155a26d67a91965161ff3ded5f2a
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Thu Apr 17 22:32:38 2014 -0400
+
+    Almost forgot this one
+
+commit 2de140ea34994e4e3768e1f8a9fa03b4a4358091
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Thu Apr 17 22:21:10 2014 -0400
+
+    The following commit is being submitted
+
+commit f78afa3b2143c07b45227791744a18868233b347
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Thu Apr 17 21:48:46 2014 -0400
+
+    DNA Sequence implemented
+
+commit 5386cb72b15547be4e59d4d81a4c32a6857558c6
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Thu Apr 17 14:22:46 2014 -0400
+
+    Implemented Job1 of DNA
+
+commit 21bd545dcf0d97474ebd2f55894c0f8e79b632aa
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Wed Apr 16 20:33:49 2014 -0400
+
+    Small bug fix.
+    
+    Controller would hang if no workers could be connected to initially.
+
+commit 228442fe9566d7e874ae07452792472f4fbeefe7
+Author: Kate Boxer <ksb93@cornell.edu>
+Date:   Wed Apr 16 23:09:11 2014 +0000
+
+    Update invertedIndex.ml
+    
+    finished invertedIndex
+
+commit 3e46ea9a40c5c1d67373e713e7160bd68842b37d
+Author: Kate Boxer <ksb93@cornell.edu>
+Date:   Wed Apr 16 22:50:26 2014 +0000
+
+    Update worker.ml
+    
+    final worker
+
+commit b3b24079ddee2c5cd540b547431c6384eb5e348c
+Author: Kate Boxer <ksb93@cornell.edu>
+Date:   Wed Apr 16 20:21:47 2014 +0000
+
+    Update invertedIndex.ml
+
+commit f5f3540e7460ab5f380731046f15906f8efa667b
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Wed Apr 16 16:17:37 2014 -0400
+
+    Formatting
+    
+    Sorry Kate, I couldn’t resist =D
+
+commit 360197875336888ea1189e3b5de72b4e77107690
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Wed Apr 16 14:31:24 2014 -0400
+
+    Finished Remote_Controller
+    
+    Restructured the entire thing =D
+
+commit ef4c3cbfb7c7be2229f8818b32743456016e386d
+Author: Kate Boxer <ksb93@cornell.edu>
+Date:   Wed Apr 16 18:28:23 2014 +0000
+
+    Update invertedIndex.ml
+    
+    with main and types updated
+
+commit 5f3c0f544a7d9e2fc416eadf034ae923b3a83354
+Author: Kate Boxer <ksb93@cornell.edu>
+Date:   Wed Apr 16 17:16:48 2014 +0000
+
+    Update worker.ml
+    
+    added exception checking
+
+commit d4710c23196e6c49ce8f85033b5ecf64c8b26dbe
+Author: Kate Boxer <ksb93@cornell.edu>
+Date:   Tue Apr 15 17:31:36 2014 -0400
+
+    Update worker.ml
+    
+    initial version of worker
+
+commit d706243087ec8ccd40a8a8a841b853c12ae93675
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Tue Apr 15 17:02:02 2014 -0400
+
+    One last updated change
+
+commit 21177a8e7868eaad261d39394f9179b4940c7a14
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Tue Apr 15 17:00:17 2014 -0400
+
+    Updated PSet Merged Changed
+
+commit 8b205c8e77d185773e38190a55e7a008d9e8b0bc
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Tue Apr 15 00:35:24 2014 -0400
+
+    Finished Remote_Controller
+    
+    Ready for testing.
+
+commit f14dc2bbeb220d76c5e2e624290b3be5fdffc5f2
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Tue Apr 15 00:01:43 2014 -0400
+
+    Added functionality to combine intermediary data
+
+commit 5112b09707a51c03833644ec2779be2cbec69f9c
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Mon Apr 14 23:38:14 2014 -0400
+
+    Continued implementation of RemoteController
+    
+    Finished mapping section and got intermediate data back from workers
+
+commit c6ab308c6652c9d33572fbb7158ff83174c6c8c8
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Sun Apr 13 23:58:02 2014 -0400
+
+    changed 'write' to 'write_line'
+
+commit ef3a47cfdd3b6423901f6e72c393517eecf23e2a
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Sun Apr 13 23:54:18 2014 -0400
+
+    Further work on RemoteController map_reduce
+    
+    Not sure if we should be using a list or a aQueue, but now the workers
+    receive their job name.
+
+commit 6ced2fc6a38092c931c6cb3ae2a56e5ee6862f73
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Sun Apr 13 22:00:18 2014 -0400
+
+    Implemented init, started map_reduce
+    
+    - Deferred var for storing address in init
+    - Implemented connection initialization to workers
+
+commit d1a503d73f746a3029e7d655fc1a09d27352bd44
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Sun Apr 13 19:21:02 2014 -0400
+
+    fork implementation
+    
+    Kate did this, * VM died though =( *
+
+commit 9aaf05760f571309ec4e7e5aca8563ea363ae148
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Wed Apr 9 19:27:49 2014 -0400
+
+    Implemented aQueue module
+    
+    N/A
+
+commit 5961b5a9a8ead4fadfa6aaad7666b523ee68c4a3
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Wed Apr 9 10:28:30 2014 -0400
+
+    Implemented deferred_map (Ex. #2)
+
+commit 20ebe61e527ed359bf930b3909bb6cc235950705
+Author: Ethan Rubinson <ethanrubinson@yahoo.com>
+Date:   Wed Apr 9 10:26:15 2014 -0400
+
+    Base Commit
+    
+    Committing the base ps5 files
